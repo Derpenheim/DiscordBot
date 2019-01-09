@@ -23,7 +23,7 @@ db = sqlite3.connect('data/memberdb')
 # Cursor for database management
 cursor = db.cursor()
 # Creating Table for member data
-cursor.execute('''CREATE TABLE IF NOT EXISTS members(id INTEGER PRIMARY KEY, name TEXT, class TEXT, level TEXT, xp TEXT)''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS members(id INTEGER PRIMARY KEY, name TEXT UNIQUE, class TEXT, level TEXT, xp TEXT)''')
 db.commit()
 
 '''Admin Commands'''
@@ -89,7 +89,7 @@ async def promote():
                 description="Answers a yes/no question.",
                 brief="Answers from the beyond.",
                 aliases=['eight_ball', 'eightball', '8-ball'],
-                pass_context=True)
+                pass_context=False)
 async def eight_ball(context):
     possible_responses = [
         'That is a resounding no',
@@ -104,7 +104,7 @@ async def eight_ball(context):
 @client.command(name='throw',
                 description="Throw a gesture towards the bot to play rock paper scissors lizard spock.",
                 brief="Play rock paper scissors lizard spock.",
-                pass_context=True)
+                pass_context=False)
 async def throw(player):
     choices = ['rock', 'paper', 'scissors', 'lizard', 'spock']
     computer = choices[random.randrange(len(choices))]
@@ -175,7 +175,7 @@ async def flip():
 @client.command(name='square',
                 description="Find out what the square of a number is.",
                 brief="Square a number.",
-                pass_context=True)
+                pass_context=False)
 async def square(number):
     squared_value = int(number) * int(number)
     await client.say(str(number) + " squared is " + str(squared_value))
@@ -193,15 +193,43 @@ async def bitcoin():
         response = json.loads(response)
         await client.say("Bitcoin price is: $" + response['bpi']['USD']['rate'])
 
-@client.command(brief="Show member info")
-async def stat(ctx, member: discord.User):
+@client.command(name='newgame',
+                description='Add the server member to the game database.',
+                brief='Add member to game.',
+                pass_context = False)
+async def newgame():
+    member_name = "Username"
+    member_class = "Mage"
+    member_level = 1
+    member_xp = 0
+    # Insert user into database
+    cursor.execute('''INSERT OR REPLACE INTO members(name, class, level, xp)VALUES(?,?,?,?)''', (member_name, member_class, member_level, member_xp))
+    await client.say(str(member_name) + " has entered the world")
+    db.commit()
+
+@client.command(name='stat',
+                description='Show the stat information of the specified server member.',
+                brief='Show member stats.',
+                pass_context = False)
+async def stat():
     # Fetch user information
-    cursor.execute('''SELECT name, class, level, xp FROM members WHERE id=?''', (member,))
-    member_name = cursor.fetchone()
-    member_class = cursor.fetchone()
-    member_level = cursor.fetchone()
-    member_xp = cursor.fetchone()
-    await client.say("NAME: " + str(member_name)  + "\n CLASS: " + str(member_class) + "\n LEVEL: " + str(member_level) + "\n XP: " + str(member_xp))
+    cursor.execute('''SELECT name, class, level, xp FROM members ''')
+    for row in cursor:
+        await client.say("NAME: " + row[0])
+        await client.say("CLASS: " + row[1])
+        await client.say("LEVEL: " + row[2])
+        await client.say("XP: " + row[3])
+
+# ***Debugging Command to delete the table***
+@client.command()
+async def drop_table():
+    cursor.execute('''DROP TABLE members''')
+    db.commit()
+# ***Debugging Command to recreate the table after deletion without needing a bot restart
+@client.command()
+async def create_table():
+    cursor.execute('''CREATE TABLE IF NOT EXISTS members(id INTEGER PRIMARY KEY, name TEXT, class TEXT, level TEXT, xp TEXT)''')
+    db.commit()
 
 '''Bot logging and other'''
 @client.event
